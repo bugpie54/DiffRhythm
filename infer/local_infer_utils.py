@@ -223,7 +223,7 @@ def cache_and_load(source_path, cache_dir, filename):
 
 def prepare_model(max_frames, device, repo_id="ASLP-lab/DiffRhythm-1_2"):
     # prepare cfm model
-    cfm_source_path = "/kaggle/working/models/cfm/cfm_model.pt"
+    cfm_source_path = "/kaggle/input/diffrhythm-1-2-files/models_files/cfm_model.pt"
     cfm_cache_dir = os.path.join("./pretrained", "cfm")
     dit_ckpt_path = cache_and_load(cfm_source_path, cfm_cache_dir, "cfm_model.pt")
     
@@ -243,7 +243,7 @@ def prepare_model(max_frames, device, repo_id="ASLP-lab/DiffRhythm-1_2"):
     tokenizer = CNENTokenizer()
 
     # prepare muq
-    muq_source_path = "/kaggle/working/models/muq"
+    muq_source_path = "/kaggle/input/diffrhythm-1-2-files/models_repo/muq"
     muq_cache_dir = os.path.join("./pretrained", "muq")
     
     if not os.path.exists(muq_cache_dir):
@@ -254,7 +254,7 @@ def prepare_model(max_frames, device, repo_id="ASLP-lab/DiffRhythm-1_2"):
     muq = muq.to(device).eval()
 
     # prepare vae
-    vae_source_path = "/kaggle/working/models/vae/vae_model.pt"
+    vae_source_path = "/kaggle/input/diffrhythm-1-2-files/models_files/vae_model.pt"
     vae_cache_dir = os.path.join("./pretrained", "vae")
     vae_ckpt_path = cache_and_load(vae_source_path, vae_cache_dir, "vae_model.pt")
     
