@@ -248,12 +248,11 @@ def prepare_model(max_frames, device, repo_id="ASLP-lab/DiffRhythm-1_2"):
     tokenizer = CNENTokenizer()
 
     # --- Prepare MuQ model ---
-    muq_cache_dir = os.path.join(PRETRAINED_CACHE_DIR, "muq")
+    muq_cache_dir = os.path.join(PRETRAINED_CACHE_DIR, "models--OpenMuQ--MuQ-MuLan-large")
     if not os.path.exists(muq_cache_dir):
         shutil.copytree(MUQ_INPUT_PATH, muq_cache_dir)
     
-    muq_loaded_dir = os.path.join(muq_cache_dir, "models--OpenMuQ--MuQ-MuLan-large")
-    muq = MuQMuLan.from_pretrained(muq_loaded_dir)
+    muq = MuQMuLan.from_pretrained(muq_cache_dir, local_files_only=True)
     muq = muq.to(device).eval()
 
     # --- Prepare VAE model ---
