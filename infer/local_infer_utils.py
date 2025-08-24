@@ -20,6 +20,7 @@ import torchaudio
 import random
 import json
 import shutil
+import glob
 from muq import MuQMuLan
 from mutagen.mp3 import MP3
 import os
@@ -212,27 +213,24 @@ def encode_audio(audio, vae_model, chunked=False, overlap=32, chunk_size=128):
         return y_final
 
 
-def cache_and_load(source_path, cache_dir, filename, is_folder=False):
-    cache_path = os.path.join(cache_dir, filename)
-    
-    if is_folder:
-        if not os.path.exists(cache_path):
-            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-            shutil.copytree(source_path, cache_path)
-    else:
-        if not os.path.exists(cache_path):
-            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-            shutil.copyfile(source_path, cache_path)
-    
-    return cache_path
-
 def prepare_model(max_frames, device, repo_id="ASLP-lab/DiffRhythm-1_2"):
-    # prepare cfm model
-    cfm_source_path = "/kaggle/working/models/cfm/cfm_model.pt"
-    cfm_cache_dir = "./pretrained_models/diffrhythm/"
-    dit_ckpt_path = cache_and_load(cfm_source_path, cfm_cache_dir, "cfm_model.pt")
-    
+    CFM_INPUT_PATH = "/kaggle/input/diffrhythm-1-2-files/models_files/cfm_model.pt"
+    MUQ_INPUT_PATH = "/kaggle/input/diffrhythm-1-2-files/models_repo/muq"
+    VAE_INPUT_PATH = "/kaggle/input/diffrhythm-1-2-files/models_files/vae_model.pt"
+
+    PRETRAINED_CACHE_DIR = "./pretrained"
+    PRETRAINED_MODELS_CACHE_DIR = "./pretrained_models"
+
+    # --- Prepare CFM model ---
+    cfm_cache_dir = os.path.join(PRETRAINED_MODELS_CACHE_DIR, "diffrhythm")
+    os.makedirs(cfm_cache_dir, exist_ok=True)
+    cfm_cache_path = os.path.join(cfm_cache_dir, "cfm_model.pt")
+    if not os.path.exists(cfm_cache_path):
+        shutil.copyfile(CFM_INPUT_PATH, cfm_cache_path)
+
+    dit_ckpt_path = cfm_cache_path
     dit_config_path = "./config/diffrhythm-1b.json"
+    
     with open(dit_config_path) as f:
         model_config = json.load(f)
     dit_model_cls = DiT
@@ -242,24 +240,31 @@ def prepare_model(max_frames, device, repo_id="ASLP-lab/DiffRhythm-1_2"):
         max_frames=max_frames
     )
     cfm = cfm.to(device)
+    # NOTE: You need to have a load_checkpoint function available in your script.
     cfm = load_checkpoint(cfm, dit_ckpt_path, device=device, use_ema=False)
 
-    # prepare tokenizer
+    # --- Prepare tokenizer ---
+    # NOTE: You need to have a CNENTokenizer class available in your script.
     tokenizer = CNENTokenizer()
 
-    # prepare muq
-    muq_source_path = "/kaggle/working/models/muq"
-    muq_cache_dir = "./pretrained/muq"
-    cache_and_load(muq_source_path, "./pretrained", "muq", is_folder=True)
-        
-    muq = MuQMuLan.from_pretrained(muq_cache_dir)
+    # --- Prepare MuQ model ---
+    muq_cache_dir = os.path.join(PRETRAINED_CACHE_DIR, "muq")
+    if not os.path.exists(muq_cache_dir):
+        shutil.copytree(MUQ_INPUT_PATH, muq_cache_dir)
+    
+    muq_loaded_dir = os.path.join(muq_cache_dir, "models--OpenMuQ--MuQ-MuLan-large")
+    muq = MuQMuLan.from_pretrained(muq_loaded_dir)
     muq = muq.to(device).eval()
 
-    # prepare vae
-    vae_source_path = "/kaggle/working/models/vae/vae_model.pt"
-    vae_cache_dir = "./pretrained/"
-    vae_ckpt_path = cache_and_load(vae_source_path, vae_cache_dir, "vae_model.pt")
+    # --- Prepare VAE model ---
+    vae_cache_dir = os.path.join(PRETRAINED_CACHE_DIR, "models--ASLP-lab--DiffRhythm-vae")
+    os.makedirs(os.path.join(vae_cache_dir, "blobs"), exist_ok=True)
     
+    vae_cache_path = os.path.join(vae_cache_dir, "blobs", os.path.basename(VAE_INPUT_PATH))
+    if not os.path.exists(vae_cache_path):
+        shutil.copyfile(VAE_INPUT_PATH, vae_cache_path)
+
+    vae_ckpt_path = vae_cache_path
     vae = torch.jit.load(vae_ckpt_path, map_location="cpu").to(device)
 
     return cfm, tokenizer, muq, vae
