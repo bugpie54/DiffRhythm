@@ -212,19 +212,24 @@ def encode_audio(audio, vae_model, chunked=False, overlap=32, chunk_size=128):
         return y_final
 
 
-def cache_and_load(source_path, cache_dir, filename):
+def cache_and_load(source_path, cache_dir, filename, is_folder=False):
     cache_path = os.path.join(cache_dir, filename)
     
-    if not os.path.exists(cache_path):
-        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-        shutil.copyfile(source_path, cache_path)
+    if is_folder:
+        if not os.path.exists(cache_path):
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+            shutil.copytree(source_path, cache_path)
+    else:
+        if not os.path.exists(cache_path):
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+            shutil.copyfile(source_path, cache_path)
     
     return cache_path
 
 def prepare_model(max_frames, device, repo_id="ASLP-lab/DiffRhythm-1_2"):
     # prepare cfm model
-    cfm_source_path = "/kaggle/input/diffrhythm-1-2-files/models_files/cfm_model.pt"
-    cfm_cache_dir = os.path.join("./pretrained", "cfm")
+    cfm_source_path = "/kaggle/working/models/cfm/cfm_model.pt"
+    cfm_cache_dir = "./pretrained_models/diffrhythm/"
     dit_ckpt_path = cache_and_load(cfm_source_path, cfm_cache_dir, "cfm_model.pt")
     
     dit_config_path = "./config/diffrhythm-1b.json"
@@ -243,19 +248,16 @@ def prepare_model(max_frames, device, repo_id="ASLP-lab/DiffRhythm-1_2"):
     tokenizer = CNENTokenizer()
 
     # prepare muq
-    muq_source_path = "/kaggle/input/diffrhythm-1-2-files/models_repo/muq"
-    muq_cache_dir = os.path.join("./pretrained", "muq")
-    
-    if not os.path.exists(muq_cache_dir):
-        os.makedirs(os.path.dirname(muq_cache_dir), exist_ok=True)
-        shutil.copytree(muq_source_path, muq_cache_dir)
+    muq_source_path = "/kaggle/working/models/muq"
+    muq_cache_dir = "./pretrained/muq"
+    cache_and_load(muq_source_path, "./pretrained", "muq", is_folder=True)
         
     muq = MuQMuLan.from_pretrained(muq_cache_dir)
     muq = muq.to(device).eval()
 
     # prepare vae
-    vae_source_path = "/kaggle/input/diffrhythm-1-2-files/models_files/vae_model.pt"
-    vae_cache_dir = os.path.join("./pretrained", "vae")
+    vae_source_path = "/kaggle/working/models/vae/vae_model.pt"
+    vae_cache_dir = "./pretrained/"
     vae_ckpt_path = cache_and_load(vae_source_path, vae_cache_dir, "vae_model.pt")
     
     vae = torch.jit.load(vae_ckpt_path, map_location="cpu").to(device)
