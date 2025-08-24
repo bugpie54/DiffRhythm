@@ -223,7 +223,7 @@ def load_checkpoint(model, ckpt_path, device, use_ema=False):
     model = model.to(device)
     return model
 
-def prepare_model(max_frames, device, repo_id="ASLP-lab/DiffRhythm-1_2"):
+def prepare_model(max_frames, device):
     CFM_INPUT_PATH = "/kaggle/input/diffrhythm-1-2-files/models_files/cfm_model.pt"
     MUQ_INPUT_PATH = "/kaggle/input/diffrhythm-1-2-files/models_repo/muq"
     VAE_INPUT_PATH = "/kaggle/input/diffrhythm-1-2-files/models_files/vae_model.pt"

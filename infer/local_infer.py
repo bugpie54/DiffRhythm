@@ -175,7 +175,7 @@ if __name__ == "__main__":
     elif audio_length == 285:  # current not available
         max_frames = 6144
 
-    cfm, tokenizer, muq, vae = prepare_model(max_frames, device, repo_id=args.repo_id)
+    cfm, tokenizer, muq, vae = prepare_model(max_frames, device)
 
     if args.lrc_path:
         with open(args.lrc_path, "r", encoding='utf-8') as f:
