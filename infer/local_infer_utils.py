@@ -213,6 +213,16 @@ def encode_audio(audio, vae_model, chunked=False, overlap=32, chunk_size=128):
         return y_final
 
 
+# This is the function to load checkpoints as you requested.
+def load_checkpoint(model, ckpt_path, device, use_ema=False):
+    ckpt = torch.load(ckpt_path, map_location="cpu")
+    if "ema_state_dict" in ckpt and use_ema:
+        model.load_state_dict(ckpt["ema_state_dict"])
+    else:
+        model.load_state_dict(ckpt["model_state_dict"])
+    model = model.to(device)
+    return model
+
 def prepare_model(max_frames, device, repo_id="ASLP-lab/DiffRhythm-1_2"):
     CFM_INPUT_PATH = "/kaggle/input/diffrhythm-1-2-files/models_files/cfm_model.pt"
     MUQ_INPUT_PATH = "/kaggle/input/diffrhythm-1-2-files/models_repo/muq"
@@ -225,12 +235,23 @@ def prepare_model(max_frames, device, repo_id="ASLP-lab/DiffRhythm-1_2"):
     cfm_cache_dir = os.path.join(PRETRAINED_MODELS_CACHE_DIR, "diffrhythm")
     os.makedirs(cfm_cache_dir, exist_ok=True)
     cfm_cache_path = os.path.join(cfm_cache_dir, "cfm_model.pt")
-    if not os.path.exists(cfm_cache_path):
-        shutil.copyfile(CFM_INPUT_PATH, cfm_cache_path)
 
-    dit_ckpt_path = cfm_cache_path
+    if not os.path.exists(cfm_cache_path):
+        dit_config_path = "./config/diffrhythm-1b.json"
+        with open(dit_config_path) as f:
+            model_config = json.load(f)
+        dit_model_cls = DiT
+        cfm_initial = CFM(
+            transformer=dit_model_cls(**model_config["model"], max_frames=max_frames),
+            num_channels=model_config["model"]["mel_dim"],
+            max_frames=max_frames
+        )
+        cfm_initial = cfm_initial.to(device)
+        cfm_loaded = load_checkpoint(cfm_initial, CFM_INPUT_PATH, device=device, use_ema=False)
+        
+        torch.save(cfm_loaded.state_dict(), cfm_cache_path)
+
     dit_config_path = "./config/diffrhythm-1b.json"
-    
     with open(dit_config_path) as f:
         model_config = json.load(f)
     dit_model_cls = DiT
@@ -240,11 +261,9 @@ def prepare_model(max_frames, device, repo_id="ASLP-lab/DiffRhythm-1_2"):
         max_frames=max_frames
     )
     cfm = cfm.to(device)
-    # NOTE: You need to have a load_checkpoint function available in your script.
-    cfm = load_checkpoint(cfm, dit_ckpt_path, device=device, use_ema=False)
+    cfm.load_state_dict(torch.load(cfm_cache_path))
 
     # --- Prepare tokenizer ---
-    # NOTE: You need to have a CNENTokenizer class available in your script.
     tokenizer = CNENTokenizer()
 
     # --- Prepare MuQ model ---
@@ -258,13 +277,13 @@ def prepare_model(max_frames, device, repo_id="ASLP-lab/DiffRhythm-1_2"):
     # --- Prepare VAE model ---
     vae_cache_dir = os.path.join(PRETRAINED_CACHE_DIR, "models--ASLP-lab--DiffRhythm-vae")
     os.makedirs(os.path.join(vae_cache_dir, "blobs"), exist_ok=True)
-    
     vae_cache_path = os.path.join(vae_cache_dir, "blobs", os.path.basename(VAE_INPUT_PATH))
-    if not os.path.exists(vae_cache_path):
-        shutil.copyfile(VAE_INPUT_PATH, vae_cache_path)
 
-    vae_ckpt_path = vae_cache_path
-    vae = torch.jit.load(vae_ckpt_path, map_location="cpu").to(device)
+    if not os.path.exists(vae_cache_path):
+        vae_loaded = torch.jit.load(VAE_INPUT_PATH, map_location="cpu").to(device)
+        torch.save(vae_loaded.state_dict(), vae_cache_path)
+
+    vae = torch.jit.load(vae_cache_path, map_location="cpu").to(device)
 
     return cfm, tokenizer, muq, vae
 
