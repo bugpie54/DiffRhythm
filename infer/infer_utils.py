@@ -210,7 +210,7 @@ def encode_audio(audio, vae_model, chunked=False, overlap=32, chunk_size=128):
             y_final[:,:,t_start:t_end] = y_chunk[:,:,chunk_start:chunk_end]
         return y_final
 
-def prepare_model(max_frames, device, repo_id="ASLP-lab/DiffRhythm-1_2"):
+def prepare_model(max_frames, device, repo_id="topqal/DiffRhythm-X"):
     # prepare cfm model
     dit_ckpt_path = hf_hub_download(
         repo_id=repo_id, filename="cfm_model.pt", cache_dir="./pretrained"
@@ -231,12 +231,12 @@ def prepare_model(max_frames, device, repo_id="ASLP-lab/DiffRhythm-1_2"):
     tokenizer = CNENTokenizer()
 
     # prepare muq
-    muq = MuQMuLan.from_pretrained("OpenMuQ/MuQ-MuLan-large", cache_dir="./pretrained")
+    muq = MuQMuLan.from_pretrained("topqal/MuQ-MuLan-large", cache_dir="./pretrained")
     muq = muq.to(device).eval()
 
     # prepare vae
     vae_ckpt_path = hf_hub_download(
-        repo_id="ASLP-lab/DiffRhythm-vae",
+        repo_id="topqal/DiffRhythm-vae",
         filename="vae_model.pt",
         cache_dir="./pretrained",
     )
